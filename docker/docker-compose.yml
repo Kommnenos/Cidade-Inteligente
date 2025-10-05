@@ -1,26 +1,54 @@
-version: "3.8"
 services:
   mongo-db:
     image: mongo:6
     container_name: mongo-db
-    ports: ["27017:27017"]
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
 
   orion:
-    image: fiware/orion:latest
+    image: fiware/orion:3.10.1
     container_name: fiware-orion
-    depends_on: [mongo-db]
-    ports: ["1026:1026"]
-    command: -dbhost mongo-db -logLevel DEBUG
+    restart: unless-stopped
+    depends_on:
+      - mongo-db
+    ports:
+      - "1026:1026"
+    command:
+      - -dbhost
+      - mongo-db
+      - -logLevel
+      - INFO
+    environment:
+      - CONTEXT_BROKER_LOG_LEVEL=INFO
+      - CONTEXT_BROKER_DB_HOST=mongo-db
 
   iot-agent:
     image: fiware/iotagent-json:latest
-    container_name: iot-agent-json
-    depends_on: [orion]
-    ports: ["4041:4041"]
+    container_name: fiware-iotagent-json
+    restart: unless-stopped
+    depends_on:
+      - orion
+      - mongo-db
+    ports:
+      - "4041:4041"
+      - "7896:7896"         # southbound HTTP port for simulated devices
     environment:
       - IOTA_CB_HOST=orion
       - IOTA_CB_PORT=1026
       - IOTA_NORTH_PORT=4041
+      - IOTA_SOUTH_PORT=7896
       - IOTA_PROVIDER_URL=http://iot-agent-json:4041
       - IOTA_REGISTRY_TYPE=mongodb
       - IOTA_MONGO_HOST=mongo-db
+      - IOTA_MONGO_PORT=27017
+      - IOTA_MONGO_DB=iotagent-json
+      - IOTA_LOG_LEVEL=INFO
+      - IOTA_DEFAULT_RESOURCE=/iot/d
+      - IOTA_DEFAULT_TRANSPORT=HTTP
+      - IOTA_TIMESTAMP=true
+
+volumes:
+  mongo_data:

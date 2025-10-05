@@ -1,0 +1,11 @@
+{
+  "devices": [
+    {
+      "device_id": "sensor_trafego_001",
+      "entity_name": "urn:ngsi-ld:FluxoTrafegoObservado:001",
+      "entity_type": "FluxoTrafegoObservado",
+      "attributes": [{ "object_id": "intensidade", "name": "intensidade", "type": "Number" }],
+      "transport": "HTTP"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+trafego:
+  base: 30
+  amplitude: 60
+  ruido: 5
+  periodo_horas: 24
+  device_id: sensor_trafego_001
+  intervalo_segundos: 5
+
+qualidade_ar:
+  base_co2: 400
+  alpha: 1.5      # sensitividade à integridade do tráfego
+  ruido: 10
+  device_id: sensor_ar_001
+  intervalo_segundos: 5
