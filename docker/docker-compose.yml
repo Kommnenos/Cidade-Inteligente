@@ -1,0 +1,26 @@
+version: "3.8"
+services:
+  mongo-db:
+    image: mongo:6
+    container_name: mongo-db
+    ports: ["27017:27017"]
+
+  orion:
+    image: fiware/orion:latest
+    container_name: fiware-orion
+    depends_on: [mongo-db]
+    ports: ["1026:1026"]
+    command: -dbhost mongo-db -logLevel DEBUG
+
+  iot-agent:
+    image: fiware/iotagent-json:latest
+    container_name: iot-agent-json
+    depends_on: [orion]
+    ports: ["4041:4041"]
+    environment:
+      - IOTA_CB_HOST=orion
+      - IOTA_CB_PORT=1026
+      - IOTA_NORTH_PORT=4041
+      - IOTA_PROVIDER_URL=http://iot-agent-json:4041
+      - IOTA_REGISTRY_TYPE=mongodb
+      - IOTA_MONGO_HOST=mongo-db
