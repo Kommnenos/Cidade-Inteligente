@@ -5,11 +5,11 @@ from simulador_base import posta_para_iot, carrega_config
 
 def curva_trafego(hora: float, base: float, amplitude: float) -> float:
     """Curva básica senoide com picos às 8 e 18."""
-    return base + amplitude * (math.sin(2 * hora * math.pi / 12 ) ** 2)
+    return base + amplitude * (math.sin(2 * hora * math.pi / 24 ) ** 2)
 
 def run():
     cfg = carrega_config()["trafego"]
-    intervalo = cfg.get("intervalo", 5)
+    intervalo = cfg.get("intervalo_segundos", 5)
 
     while True:
         agora = time.localtime()
