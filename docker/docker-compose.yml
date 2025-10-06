@@ -1,3 +1,7 @@
+x-fiware-headers: &fiware_headers
+  FIWARE_SERVICE: openiot
+  FIWARE_SERVICEPATH: /
+
 services:
   mongo-db:
     image: mongo:6
@@ -7,6 +11,12 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   orion:
     image: fiware/orion:3.10.1
@@ -21,9 +31,12 @@ services:
       - mongo-db
       - -logLevel
       - INFO
-    environment:
-      - CONTEXT_BROKER_LOG_LEVEL=INFO
-      - CONTEXT_BROKER_DB_HOST=mongo-db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1026/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   iot-agent:
     image: fiware/iotagent-json:latest
@@ -34,13 +47,13 @@ services:
       - mongo-db
     ports:
       - "4041:4041"
-      - "7896:7896"         # southbound HTTP port for simulated devices
+      - "7896:7896"
     environment:
       - IOTA_CB_HOST=orion
       - IOTA_CB_PORT=1026
       - IOTA_NORTH_PORT=4041
       - IOTA_SOUTH_PORT=7896
-      - IOTA_PROVIDER_URL=http://iot-agent-json:4041
+      - IOTA_PROVIDER_URL=http://iotagent-json:4041
       - IOTA_REGISTRY_TYPE=mongodb
       - IOTA_MONGO_HOST=mongo-db
       - IOTA_MONGO_PORT=27017
@@ -49,6 +62,96 @@ services:
       - IOTA_DEFAULT_RESOURCE=/iot/d
       - IOTA_DEFAULT_TRANSPORT=HTTP
       - IOTA_TIMESTAMP=true
+      - IOTA_MQTT_DISABLED=true
+      - IOTA_AMQP_DISABLED=true
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4041/iot/about || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # One-shot registrar com loop de tentativas subsequentes (os healthchecks deram trabalho)
+  registrar:
+    image: curlimages/curl:8.8.0
+    container_name: registrar
+    depends_on:
+      - iot-agent
+      - orion
+    environment:
+      <<: *fiware_headers
+    volumes:
+      - ../configs:/work:ro
+    working_dir: /work
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        
+        echo "Aguardando IoT Agent..."
+        for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+          if curl -fsS http://iot-agent:4041/iot/about > /dev/null 2>&1; then
+            echo "IoT Agent pronto!"
+            break
+          fi
+          echo "Attempt $$i: IoT Agent ainda não esta pronto, agaurdando 5s..."
+          sleep 5
+        done
+
+        echo "==> Criando/validando Serviço IoT (mapeando apikey)…"
+        curl -fsS -X POST "http://iot-agent:4041/iot/services" \
+          -H "Content-Type: application/json" \
+          -H "fiware-service: $$FIWARE_SERVICE" \
+          -H "fiware-servicepath: $$FIWARE_SERVICEPATH" \
+          -d @servico_iot.json || true
+
+        echo "==> Registrando dispositivos…"
+        curl -fsS -X POST "http://iot-agent:4041/iot/devices" \
+          -H "Content-Type: application/json" \
+          -H "fiware-service: $$FIWARE_SERVICE" \
+          -H "fiware-servicepath: $$FIWARE_SERVICEPATH" \
+          -d @dispositivos_iot.json || true
+
+        echo "Registrar completo."
+
+  # Simulador de trafego
+  trafego-sim:
+    build:
+      context: ..
+      dockerfile: simuladores/Dockerfile
+    container_name: sim-trafego
+    depends_on:
+      registrar:
+        condition: service_completed_successfully
+    environment:
+      <<: *fiware_headers
+      IOT_AGENT_URL: http://iot-agent:7896/iot/d
+      DEVICE_ID: sensor_trafego_001
+      APIKEY: "1234"
+    command: ["python", "-u", "sim_trafego.py"]
+    volumes:
+      - ../simuladores/config.yml:/app/config.yml:ro
+    restart: unless-stopped
+
+  # Simulador de qualidade do ar
+  air-sim:
+    build:
+      context: ..
+      dockerfile: simuladores/Dockerfile
+    container_name: sim-ar
+    depends_on:
+      registrar:
+        condition: service_completed_successfully
+    environment:
+      <<: *fiware_headers
+      IOT_AGENT_URL: http://iot-agent:7896/iot/d
+      DEVICE_ID: sensor_ar_001
+      APIKEY: "1234"
+    command: ["python", "-u", "sim_ar.py"]
+    volumes:
+      - ../simuladores/config.yml:/app/config.yml:ro
+    restart: unless-stopped
 
 volumes:
   mongo_data:

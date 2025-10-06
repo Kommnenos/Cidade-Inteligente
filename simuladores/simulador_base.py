@@ -1,11 +1,16 @@
 import requests
 import yaml
 from datetime import datetime
+import os
 
-URL_IOT_AGENT = "http://localhost:7896/iot/d"
+SERVICO_FIWARE = os.getenv("FIWARE_SERVICE", "openiot")
+SERVICEPATH_FIWARE = os.getenv("FIWARE_SERVICEPATH", "/")
+URL_IOT_AGENT = os.getenv("IOT_AGENT_URL", "http://localhost:7896/iot/d")
+APIKEY = os.getenv("APIKEY", "1234")
+
 HEADERS = {
-    "fiware-service": "openiot",
-    "fiware-servicepath": "/"
+    "fiware-service": SERVICO_FIWARE,
+    "fiware-servicepath": SERVICEPATH_FIWARE
 }
 
 def carrega_config(path: str = "config.yml") -> dict:
@@ -13,9 +18,9 @@ def carrega_config(path: str = "config.yml") -> dict:
     with open(path, "r", encoding="utf-8") as file:
         return yaml.safe_load(file)
 
-def posta_para_iot(device_id: str, dados: dict, chave_api: str = "1234") -> None:
+def posta_para_iot(device_id: str, dados: dict) -> None:
     """Manda uma payload JSON para o IoT Agent"""
-    url = f"{URL_IOT_AGENT}/device/{device_id}/attr"
+    url = f"{URL_IOT_AGENT}?k={APIKEY}&i={device_id}"
     try:
         resposta = requests.post(url, headers=HEADERS, json=dados, timeout=5)
         resposta.raise_for_status()

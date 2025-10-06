@@ -4,8 +4,19 @@
       "device_id": "sensor_trafego_001",
       "entity_name": "urn:ngsi-ld:FluxoTrafegoObservado:001",
       "entity_type": "FluxoTrafegoObservado",
-      "attributes": [{ "object_id": "intensidade", "name": "intensidade", "type": "Number" }],
-      "transport": "HTTP"
+      "transport": "HTTP",
+      "attributes": [
+        { "object_id": "intensidade", "name": "intensidade", "type": "Number" }
+      ]
+    },
+    {
+      "device_id": "sensor_ar_001",
+      "entity_name": "urn:ngsi-ld:QualidadeArObservada:001",
+      "entity_type": "QualidadeArObservada",
+      "transport": "HTTP",
+      "attributes": [
+        { "object_id": "co2", "name": "co2", "type": "Number" }
+      ]
     }
   ]
 }

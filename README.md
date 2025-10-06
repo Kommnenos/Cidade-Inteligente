@@ -62,23 +62,13 @@ Cidade Inteligente/
 * Docker + Docker Compose
 * Python 3.10+
 
-### Setup
+### Setup/Run
 
 ```bash
 git clone <this-repo>
 cd fiware-smartcity-sim/docker
 docker-compose up -d
 ```
-
-### Simulators
-
-Run the Python sensor simulator:
-
-```bash
-cd simulators
-python sensors.py
-```
-
 ---
 
 ## 📊 Visualização
